@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Linq;
-using System.Web;
+using System.Net;
+using System.Reflection;
 
 namespace Flurl
 {
@@ -21,7 +20,7 @@ namespace Flurl
 		/// <summary>
 		/// Collection of all query string parameters.
 		/// </summary>
-		public NameValueCollection QueryParams { get; private set; }
+		public Dictionary<string, string> QueryParams { get; private set; }
 
 		/// <summary>
 		/// Constructs a Url object from a string.
@@ -34,10 +33,38 @@ namespace Flurl
 			var parts = baseUrl.Split('?');
 			Path = parts[0];
 			// nice tip from John Bledsoe: http://stackoverflow.com/a/1877016/62600
-			QueryParams = HttpUtility.ParseQueryString(parts.Length > 1 ? parts[1] : "");
+            QueryParams = ParseQueryString(parts.Length > 1 ? parts[1] : "");
 		}
 
-		/// <summary>
+        public Dictionary<string, string> ParseQueryString(string query)
+	    {
+	        if (query == null)
+	        {
+	            throw new ArgumentNullException("query");
+	        }
+
+            var collection = new Dictionary<string, string>();
+
+	        if (query.Length > 0)
+	        {
+	            var parts = new List<string>();
+
+                var parms = query.Split('?').ElementAt(0).Split('&');
+
+                foreach (var parm in parms)
+	            {
+                    var otherkvpair = parm.Split('=');
+
+                    collection.Add(otherkvpair[0], otherkvpair[1]);
+	            }
+              
+
+	        }
+
+            return collection;
+	    }
+
+	    /// <summary>
 		/// Basically a Path.Combine for URLs. Ensures exactly one '/' character is used to seperate each segment.
 		/// URL-encodes illegal characters but not reserved characters.
 		/// </summary>
@@ -58,7 +85,7 @@ namespace Flurl
 		/// <returns></returns>
 		private static string CleanSegment(string url) {
 			// http://stackoverflow.com/questions/4669692/valid-characters-for-directory-part-of-a-url-for-short-links
-			return HttpUtility.UrlPathEncode(url).Replace("?", "%3F");
+			return Uri.EscapeUriString(url).Replace("?", "%3F");
 		}
 
 		/// <summary>
@@ -82,7 +109,10 @@ namespace Flurl
 		/// <param name="segments">The segments to append</param>
 		/// <returns>the Url object with the segments appended</returns>
 		public Url AppendPathSegments(params string[] segments) {
-			Array.ForEach(segments, s => AppendPathSegment(s));
+		    foreach (var segment in segments)
+		    {
+		        AppendPathSegment(segment);
+		    }
 			return this;
 		}
 
@@ -118,10 +148,16 @@ namespace Flurl
 			if (values == null)
 				return this;
 
-			foreach (PropertyDescriptor prop in TypeDescriptor.GetProperties(values))
-				SetQueryParam(prop.Name, prop.GetValue(values));
 
-			return this;
+		    foreach (var propertyInfo in values.GetType().GetRuntimeProperties())
+		    {
+		        var name = propertyInfo.Name;
+		        var value = propertyInfo.GetValue(values, index: null);
+
+		        SetQueryParam(name, value);
+		    }
+
+            return this;
 		}
 
 		/// <summary>
@@ -155,7 +191,10 @@ namespace Flurl
 		/// <param name="names">Query string parameter names to remove</param>
 		/// <returns>The Url object with the query string parameters removed</returns>
 		public Url RemoveQueryParams(params string[] names) {
-			Array.ForEach(names, QueryParams.Remove);
+		    foreach (var name in names)
+		    {
+		        QueryParams.Remove(name);
+		    }
 			return this;
 		}
 
@@ -165,21 +204,37 @@ namespace Flurl
 		/// <param name="names">Query string parameter names to remove</param>
 		/// <returns>The Url object with the query string parameters removed</returns>
 		public Url RemoveQueryParams(IEnumerable<string> names) {
-			foreach(var name in names)
-				QueryParams.Remove(name);
+		    foreach (var name in names)
+		    {
+                QueryParams.Remove(name);        
+		    }
 
 			return this;
 		}
 
-		/// <summary>
-		/// Converts this Url object to its string representation.
-		/// </summary>
-		/// <returns></returns>
-		public override string ToString() {
-			var url = Path;
-			if (QueryParams.Count > 0)
-				url += "?" + QueryParams;
-			return url;
+	    /// <summary>
+	    /// Converts this Url object to its string representation.
+	    /// </summary>
+	    /// <returns></returns>
+	    public override string ToString()
+	    {
+	        var url = Path;
+
+	        if (QueryParams.Count > 0)
+	        {
+                url += "?";
+
+
+	            foreach (var queryParam in QueryParams)
+	            {
+                    url = url + String.Format("{0}={1}&", WebUtility.UrlEncode(queryParam.Key), WebUtility.UrlEncode(queryParam.Value));
+	            }
+
+
+	            url = url.TrimEnd('&');
+	        }
+
+	        return url;
 		}
 
 		/// <summary>

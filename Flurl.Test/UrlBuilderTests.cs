@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Linq;
 using NUnit.Framework;
 
 namespace Flurl.Test
@@ -28,9 +26,9 @@ namespace Flurl.Test
 
 		[Test]
 		public void constructor_parses_url() {
-			var url = new Url("http://www.mysite.com/more?x=1&y=2");
+            var url = new Url("http://www.mysite.com/more?x=1&y=2");
 			Assert.AreEqual("http://www.mysite.com/more", url.Path);
-			CollectionAssert.AreEqual(new NameValueCollection() {{ "x", "1" }, { "y", "2" }}, url.QueryParams);
+			CollectionAssert.AreEqual(new Dictionary<string, string>() {{ "x", "1" }, { "y", "2" }}, url.QueryParams);
 		}
 
 		[Test]
@@ -105,7 +103,7 @@ namespace Flurl.Test
 				.SetQueryParams(new { n = "hi", m = "bye" })
 				.AppendPathSegment("endpoint");
 
-			Assert.AreEqual("http://www.mysite.com/category/endpoint?b=2&n=hi&m=bye", url.ToString());
+            Assert.AreEqual("http://www.mysite.com/category/endpoint?m=bye&b=2&n=hi", url.ToString());
 		}
 
 		[Test]
@@ -123,7 +121,7 @@ namespace Flurl.Test
 		[Test]
 		public void encodes_query_params() {
 			var url = "http://www.mysite.com".AddQueryParams(new { x = "$50", y = "2+2=4" });
-			Assert.AreEqual("http://www.mysite.com?x=%2450&y=2%2b2%3d4", url.ToString());
+			Assert.AreEqual("http://www.mysite.com?x=%2450&y=2%2B2%3D4", url.ToString());
 		}
 
 		[Test]
